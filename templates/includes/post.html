@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Пост {{ post_author }}{% endblock %}
+{% block header %}Пост {{ post_author }}{% endblock %}
+{% block content %}
+{% load user_filters %}
+{% load thumbnail %}
+
+<main role="main" class="container">
+    <div class="row">
+            <div class="col-md-3 mb-3 mt-1">
+                <div class="card">
+                        <div class="card-body">
+                                <div class="h2">
+                                     {{ post_author.get_full_name }}
+                                </div>
+                                <div class="h3 text-muted">
+                                     {{ post_author }}
+                                </div>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                        <div class="h6 text-muted">
+                                        Подписчиков: {{ post_author.following.count }} <br />
+                                        Подписан: {{ post_author.follower.count }}
+                                        </div>
+                                </li>
+                                <li class="list-group-item">
+                                        <div class="h6 text-muted">
+                                            Записей: {{ post_author.posts.count }}
+                                        </div>
+                                </li>
+                        </ul>
+                </div>
+        </div>
+
+        <div class="col-md-9">
+
+            <div class="card mb-3 mt-1 shadow-sm">
+               {% include "includes/post_item.html" with post=post %}
+    </div>
+
+
+            {% include "includes/comments.html" %}
+
+
+</main>
+{% endblock %}
