@@ -8,9 +8,6 @@
 
     {% for post in page %}
     {% include "includes/post_item.html" with post=post %}
-    {% load cache %}
-    {% cache 20 index_page %}
-    {% endcache %}
     {% endfor %}
     </div>
 

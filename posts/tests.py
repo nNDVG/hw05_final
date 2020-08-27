@@ -1,8 +1,13 @@
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from .models import Follow, Group, Post, User
+
+from PIL import Image
+
+import tempfile
 
 
 class TestProfile(TestCase):
@@ -16,6 +21,7 @@ class TestProfile(TestCase):
 
     def post_is_real(self):
         last_post = Post.objects.first()
+        cache.clear()
         response = self.client.get(reverse('index'))
         paginator = response.context.get('paginator')
         if paginator is not None:
@@ -28,8 +34,8 @@ class TestProfile(TestCase):
         self.assertEqual(post.group, last_post.group)
 
     def post_on_pages(self):
-        cache.clear()
         post = Post.objects.first()
+        cache.clear()
         response = self.authorized_client.get(reverse('index'))
         self.assertContains(response, post.text)
         response = self.authorized_client.get(reverse('profile', kwargs={'username': self.user.username}))
@@ -40,6 +46,9 @@ class TestProfile(TestCase):
         self.assertContains(response, post.text)
         if post.group is not None:
             response = self.authorized_client.get(reverse('group_posts', kwargs={'slug': self.group.slug}))
+            self.assertContains(response, post.text)
+        if self.user.follower.count() == 1:
+            response = self.authorized_client.get(reverse('follow_index'))
             self.assertContains(response, post.text)
 
     def test_profile(self):
@@ -52,10 +61,10 @@ class TestProfile(TestCase):
             reverse('new_post'), {'text': "Тест для тестового поста",
                                   'author': self.user, 'group': self.group.pk}
         )
-        cache.clear()
         posts_after = Post.objects.all().count()
         self.assertNotEqual(posts_before, posts_after)
         self.post_is_real()
+        cache.clear()
         response = self.authorized_client.get(reverse('index'))
         page = response.context['page']
         for test_post in page:
@@ -113,30 +122,49 @@ class TestProfile(TestCase):
 
     def test_auth_follow(self):
         second_user = User.objects.create_user(username='second', email='testmail@testmail.com', password='testtest')
-        find_text = 'Text for find on page'
-        second_post = Post.objects.create(text=find_text, author=second_user)
         self.client.force_login(self.user)
         self.client.get(reverse('profile_follow', args=[second_user]))
-        response = self.authorized_client.get(reverse('follow_index'))
-        self.assertContains(response, find_text)
         find_follow = Follow.objects.get(user=self.user, author=second_user)
+        self.assertTrue(find_follow)
         self.assertEqual(self.user, find_follow.user)
-        self.client.get(reverse('profile_unfollow', args=[second_user]))
-        response = self.authorized_client.get(reverse('follow_index'))
-        self.assertNotContains(response, find_text)
+        self.assertEqual(self.user.follower.count(), 1)
+
+    def test_auth_unfollow(self):
+        second_user = User.objects.create_user(username='second', email='testmail@testmail.com', password='testtest')
+        follow = Follow.objects.create(user=self.user, author=second_user)
+        self.client.force_login(self.user)
+        self.client.post(reverse('profile_unfollow', args=[second_user]))
+        find_follow = Follow.objects.first()
+        self.assertFalse(find_follow)
+        self.assertEqual(self.user.follower.count(), 0)
 
     def test_new_post_follow(self):
         second_user = User.objects.create_user(username='second', email='secondd@testmail.com', password='testtest')
-        third_user = User.objects.create_user(username='third', email='third@testmail.com', password='testtest')
         self.client.force_login(self.user)
         self.client.get(reverse('profile_follow', args=[second_user]))
         find_text = 'Text for find on page'
         second_post = Post.objects.create(text=find_text, author=second_user)
         response = self.authorized_client.get(reverse('follow_index'))
         self.assertContains(response, find_text)
-        self.client.force_login(third_user)
         response = self.client.get(reverse('follow_index'))
         self.assertNotContains(response, find_text)
+
+    def test_new_post_follow(self):
+        second_user = User.objects.create_user(username='second', email='testmail@testmail.com', password='testtest')
+        follow = Follow.objects.create(user=self.user, author=second_user)
+        find_text = 'Text for find on page'
+        new_post = Post.objects.create(text=find_text, author=second_user)
+        self.client.force_login(second_user)
+        self.post_on_pages()
+
+    def test_new_post_follow(self):
+        second_user = User.objects.create_user(username='second', email='testmail@testmail.com', password='testtest')
+        find_text = 'Text for find on page'
+        new_post = Post.objects.create(text=find_text, author=self.user)
+        self.client.force_login(second_user)
+        response = self.client.get(reverse('follow_index'))
+        self.assertNotContains(response, find_text)
+        self.post_on_pages()
 
     def test_un_auth_comment(self):
         test_post = Post.objects.create(text='text for test post', author=self.user)
@@ -163,6 +191,7 @@ class TestProfileImage(TestCase):
 
     def image_on_pages(self):
         post = Post.objects.first()
+        cache.clear()
         response = self.authorized_client.get(reverse('index'))
         self.assertIn('img', str(response.content))
         response = self.authorized_client.get(reverse('profile', kwargs={'username': self.user.username}))
@@ -174,25 +203,26 @@ class TestProfileImage(TestCase):
         if post.group is not None:
             response = self.authorized_client.get(reverse('group_posts', kwargs={'slug': self.group.slug}))
             self.assertIn('img', str(response.content))
+        if self.user.follower.count() == 1:
+            response = self.authorized_client.get(reverse('follow_index'))
+            self.assertIn('img', str(response.content))
 
     def test_image_on_post_page(self):
-        from PIL import Image
-        img = Image.new('RGB', (60, 30), color='red')
-        img.save('pil_red.png')
-        with open(img, 'rb') as img:
+        f = tempfile.TemporaryFile()
+        f.img = Image.new('RGB', (60, 30), color='red')
+        with open('pil_red.png', 'rb') as img:
             response = self.authorized_client.post(
                 reverse('post_edit', kwargs={'username': self.user.username, 'post_id': self.post.id}),
                 {'text': 'Тестовая запись', 'image': img, 'group': self.group.pk}, follow=True
             )
         self.assertEqual(response.status_code, 200)
-        cache.clear()
         response = self.authorized_client.get(
             reverse('post', kwargs={'username': self.user.username, 'post_id': self.post.id})
         )
-        print(response.context)
-        self.assertContains(response, 'img')
-        self.assertIn('img', response.content.decode())  # Оставил для себя
-        self.assertIn('img', str(response.content))  # Оставил для себя
+        self.image_on_pages()
+        # self.assertContains(response, 'img')  Оставил для себя
+        # self.assertIn('img', response.content.decode())   Оставил для себя
+        # self.assertIn('img', str(response.content))   Оставил для себя
 
     def test_image_on_pages(self):
         with open('/home/dvg/Изображения/1.jpg', 'rb') as img:
@@ -207,12 +237,16 @@ class TestProfileImage(TestCase):
             self.image_on_pages()
 
     def test_no_image_push(self):
-        with open('/home/dvg/hw04_tests-master/manage.py', 'rb') as img:
-            response = self.authorized_client.post(
-                reverse('post_edit', kwargs={'username': self.user.username, 'post_id': self.post.id}),
-                {'text': 'Тестовая запись', 'image': img, 'group': self.group.pk}, follow=True
-            )
-            self.assertFormError(
-                response, 'form', 'image', 'Загрузите правильное изображение. '
-                'Файл, который вы загрузили, поврежден или не является изображением.'
-            )
+        not_image = SimpleUploadedFile(
+            name='some.txt',
+            content=b'abc',
+            content_type='text/plain'
+        )
+        response = self.authorized_client.post(
+            reverse('post_edit', kwargs={'username': self.user.username, 'post_id': self.post.id}),
+            {'text': 'Тестовая запись', 'image': not_image, 'group': self.group.pk}, follow=True
+        )
+        self.assertFormError(
+            response, 'form', 'image', 'Загрузите правильное изображение. '
+                                       'Файл, который вы загрузили, поврежден или не является изображением.'
+        )

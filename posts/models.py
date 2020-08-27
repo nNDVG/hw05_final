@@ -21,7 +21,7 @@ class Post(models.Model):
         Group, on_delete=models.SET_NULL, blank=True, null=True, related_name='posts',
         verbose_name='Выберите группу', help_text='(необязательно)'
     )
-    image = models.ImageField(upload_to='posts/', blank=True, null=True)
+    image = models.ImageField(upload_to='posts/', blank=True, null=True, verbose_name='Добавьте изображение')
 
     class Meta:
         ordering = ['-pub_date']
