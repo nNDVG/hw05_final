@@ -129,7 +129,7 @@ class TestProfile(TestCase):
         follow = Follow.objects.create(user=self.user, author=new_user)
         response = self.authorized_client.get(reverse('profile_unfollow', args=[new_user]), follow=True)
         self.assertEqual(response.status_code, 200)
-        find_follow = Follow.objects.first()
+        find_follow = Follow.objects.exists()
         self.assertFalse(find_follow)
         self.assertEqual(self.user.follower.count(), 0)
 
