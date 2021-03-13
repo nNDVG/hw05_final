@@ -1,6 +1,5 @@
 # Description
-### Yatube Project
-#### A social network with registration, where users can publish posts grouped by topic, with the ability to leave comments on posts, as well as subscribe to interesting authors. 
+####A social network with registration, where users can publish posts grouped by topic, with the ability to leave comments on posts, as well as subscribe to interesting authors. 
 #### An API was also developed for this project based on the Django REST framework: https://github.com/nNDVG/api_final_yatube
 
 # Run
@@ -17,7 +16,7 @@
  - python manage.py runserver 
   
 # Tests
-### Run the command in the project directory (with file the "pytest.ini" file:
+### Run the command in the project directory (with file the "pitest.ini" file):
  - pytest
 
 
