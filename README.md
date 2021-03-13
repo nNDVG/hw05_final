@@ -17,7 +17,7 @@
  - python manage.py runserver 
   
 # Tests
-### Run the command in the project directory (with file the "pitest.ini" file:
+### Run the command in the project directory (with file the "pytest.ini" file:
  - pytest
 
 
