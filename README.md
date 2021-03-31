@@ -1,6 +1,9 @@
 # Description
 #### A social network with registration, where users can publish posts grouped by topic, with the ability to leave comments on posts, as well as subscribe to interesting authors. 
 #### An API was also developed for this project based on the Django REST framework: https://github.com/nNDVG/api_final_yatube
+### What would add:
+- Messages
+- More information in the user's bio, such as interests, field about yourself and additional contacts
 
 # Run
 ## To install on a local computer, you must:
@@ -23,9 +26,12 @@
 # Author
  - https://github.com/nNDVG/
  - https://hub.docker.com/u/ndvg/
+ ### Contacts
+ - Telegram: nNDVG
+ - Email: n.dvg@yandex.ru
 
 # Tech stack:
-* Python
+* Python3.x
 * Django
 * Django REST
 
